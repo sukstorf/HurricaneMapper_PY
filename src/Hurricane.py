@@ -20,9 +20,7 @@ arcpy.env.overwriteOutput = True
 
 # %%
 #Set storm variable
-storm_season = 2024
-storm_name = "HELENE"
-affected_counties = processed_folder_path / 'affected_counties.shp'
+storm_season = 2000
 
 #Set model layers
 ibtracs_NA_points = str(raw_folder_path /'IBTrACS_NA.shp')
@@ -30,45 +28,60 @@ usa_counties = 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/service
 storm_track_points =  "memory\\track_points"
 storm_track_line = "memory\\Tracklines"
 
+#%%
+storm_dict = {}
+
+for storm_season in range(2000, 2024):
+    # Create list of storm names from the IBtracs feature class in the selected season
+    storm_names = [row[0] for row in arcpy.da.SearchCursor(ibtracs_NA_points, "NAME", f"SEASON = {storm_season}")]
+    # Now I want only the unique values in storm_names
+    storm_names = list(set(storm_names))
+
+    print(f"Storms in {storm_season}: {storm_names}")
+
+storm_dict[storm_season] = storm_names
+
+
+
+
 # %% [markdown]
 # #### Select point features corresponding to a specific storm (season & name)
 
 # %%
-#Select points for a given storm
-arcpy.analysis.Select(
+TotalCountyCount = 0
+
+for storm_name in storm_names:
+    print(f"Processing storm: {storm_name}")
+    #Select points for a given storm
+    arcpy.analysis.Select(
     in_features=ibtracs_NA_points, 
     out_feature_class=storm_track_points, 
     where_clause=f"SEASON = {storm_season} And NAME = '{storm_name}'"
-)
+    )
 
-# %% [markdown]
-# #### Connect Points to a Track line
+    # #### Connect Points to a Track line
 
-# %%
-#Connect point to a track line
-arcpy.management.PointsToLine(
+    #Connect point to a track line
+    arcpy.management.PointsToLine(
     Input_Features=storm_track_points,
     Output_Feature_Class=storm_track_line,
     Sort_Field='ISO_TIME'
-)
+    )
 
-# %% [markdown]
-# #### Select Counties Intersecting Point
+    # #### Select Counties Intersecting Point
 
-# %%
-#Select intersecting counties
-select_output = arcpy.management.SelectLayerByLocation(
+    #Select intersecting counties
+    select_output = arcpy.management.SelectLayerByLocation(
     in_layer=usa_counties, 
     overlap_type="INTERSECT", 
     select_features=storm_track_line, 
     )
-select_result = select_output.getOutput(0)
+    select_result = select_output.getOutput(0)
 
+    # Print the count
+    CountyCount = arcpy.management.GetCount(select_result)
+    print(f"Counties intersecting track for {storm_name}: {CountyCount}")
+    TotalCountyCount = TotalCountyCount + CountyCount
+
+print(TotalCountyCount)
 # %%
-#Copy selected counties to output feature class
-arcpy.management.CopyFeatures(
-    in_features = select_result, 
-    out_feature_class = str(affected_counties)
-)
-
-
