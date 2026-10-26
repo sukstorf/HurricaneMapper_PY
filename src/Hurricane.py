@@ -2,8 +2,8 @@
 # ## Hurricane Tracking Workflow
 # This notebook selects trackpoints from a features class of trackpoints for a selected storm (season & name), creates a track line, and extracts US counties that intersect that trackline. 
 # 
-# Fall 202X  
-# John.Fay@duke.edu
+# Fall 2026
+# Peter.Sukstorf@duke.edu
 
 # %%
 #Import package
