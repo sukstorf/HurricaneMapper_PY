@@ -21,6 +21,7 @@ arcpy.env.overwriteOutput = True
 # %%
 #Set storm variable
 storm_season = 2000
+out_file = processed_folder_path / 'output.csv'
 
 #Set model layers
 ibtracs_NA_points = str(raw_folder_path /'IBTrACS_NA.shp')
@@ -48,40 +49,42 @@ storm_dict[storm_season] = storm_names
 # #### Select point features corresponding to a specific storm (season & name)
 
 # %%
-TotalCountyCount = 0
 
-for storm_name in storm_names:
-    print(f"Processing storm: {storm_name}")
-    #Select points for a given storm
-    arcpy.analysis.Select(
-    in_features=ibtracs_NA_points, 
-    out_feature_class=storm_track_points, 
-    where_clause=f"SEASON = {storm_season} And NAME = '{storm_name}'"
-    )
+for storm_season in storm_dict.keys():
+    TotalCountyCount = 0
+    for storm_name in storm_dict[storm_season]:
+        print(f"Processing storm: {storm_name}")
+        #Select points for a given storm
+        arcpy.analysis.Select(
+        in_features=ibtracs_NA_points, 
+        out_feature_class=storm_track_points, 
+        where_clause=f"SEASON = {storm_season} And NAME = '{storm_name}'"
+        )
 
-    # #### Connect Points to a Track line
+        # #### Connect Points to a Track line
 
-    #Connect point to a track line
-    arcpy.management.PointsToLine(
-    Input_Features=storm_track_points,
-    Output_Feature_Class=storm_track_line,
-    Sort_Field='ISO_TIME'
-    )
+        #Connect point to a track line
+        arcpy.management.PointsToLine(
+        Input_Features=storm_track_points,
+        Output_Feature_Class=storm_track_line,
+        Sort_Field='ISO_TIME'
+        )
 
-    # #### Select Counties Intersecting Point
+        # #### Select Counties Intersecting Point
 
-    #Select intersecting counties
-    select_output = arcpy.management.SelectLayerByLocation(
-    in_layer=usa_counties, 
-    overlap_type="INTERSECT", 
-    select_features=storm_track_line, 
-    )
-    select_result = select_output.getOutput(0)
+        #Select intersecting counties
+        select_output = arcpy.management.SelectLayerByLocation(
+        in_layer=usa_counties, 
+        overlap_type="INTERSECT", 
+        select_features=storm_track_line, 
+        )
+        select_result = select_output.getOutput(0)
 
-    # Print the count
-    CountyCount = arcpy.management.GetCount(select_result)
-    print(f"Counties intersecting track for {storm_name}: {CountyCount}")
-    TotalCountyCount = TotalCountyCount + CountyCount
-
-print(TotalCountyCount)
-# %%
+        # Print the count
+        CountyCount = int(str(arcpy.management.GetCount(select_result)))
+        print(f"Counties intersecting track for {storm_name}: {CountyCount}")
+        TotalCountyCount += CountyCount
+        
+    print(TotalCountyCount)
+    out_file.write(f'{storm_season},{TotalCountyCount}/n')
+    # %%
